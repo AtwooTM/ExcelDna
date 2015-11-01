@@ -1,5 +1,5 @@
 //  Copyright (c) Govert van Drimmelen. All rights reserved.
-//  Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//  Excel-DNA is licensed under the zlib license. See LICENSE.txt for details.
 
 using System;
 using System.Collections.Generic;
@@ -293,7 +293,18 @@ namespace ExcelDna.Integration
             return string.Format("({0},{1} : {2},{3}) - {4}", RowFirst, ColumnFirst, RowLast, ColumnLast, SheetId);
         }
 
-        public static bool operator ==(ExcelReference left, ExcelReference right) { return left.Equals(right); }
-        public static bool operator !=(ExcelReference left, ExcelReference right) { return !left.Equals(right); }
+        public static bool operator ==(ExcelReference left, ExcelReference right)
+        {
+            if (ReferenceEquals(left, right))
+                return true;
+            if ((object)left == null || (object)right == null)
+                return false;
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(ExcelReference left, ExcelReference right)
+        {
+            return !(left == right);
+        }
 	}
 }

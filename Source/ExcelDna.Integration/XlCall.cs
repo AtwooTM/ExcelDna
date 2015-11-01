@@ -1,12 +1,12 @@
 //  Copyright (c) Govert van Drimmelen. All rights reserved.
-//  Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//  Excel-DNA is licensed under the zlib license. See LICENSE.txt for details.
 
 using System;
 using System.Runtime.InteropServices;
 
 namespace ExcelDna.Integration
 {
-	public static class XlCall
+	public class XlCall
 	{
 		/*
 		** Return codes

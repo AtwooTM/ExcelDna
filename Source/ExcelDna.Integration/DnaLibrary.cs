@@ -1,5 +1,5 @@
 //  Copyright (c) Govert van Drimmelen. All rights reserved.
-//  Licensed under the MIT license. See LICENSE file in the project root for full license information.
+//  Excel-DNA is licensed under the zlib license. See LICENSE.txt for details.
 
 using System;
 using System.Collections.Generic;
@@ -648,7 +648,7 @@ namespace ExcelDna.Integration
             }
 
             // Else give up (maybe try load from GAC for assemblies?)
-            Logger.Initialization.Error("ResolvePath: Could not find {0} from DnaDirectory {1}", path, dnaDirectory);
+            Logger.Initialization.Warn("ResolvePath: Could not find {0} from DnaDirectory {1}", path, dnaDirectory);
             return null;
         }
 

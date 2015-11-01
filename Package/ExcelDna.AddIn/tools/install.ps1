@@ -1,6 +1,8 @@
 param($installPath, $toolsPath, $package, $project)
 Write-Host "Starting ExcelDna.AddIn install script"
 
+$dteVersion = $project.DTE.Version
+$isBeforeVS2015 = ($dteVersion -lt 14.0)
 $projName = $project.Name
 $isFSharp = ($project.Type -eq "F#")
 # Look for and rename old .dna file
@@ -19,6 +21,8 @@ else
     $oldUninstalledDnaFile = $project.ProjectItems | Where-Object { $_.Name -eq "_UNINSTALLED_${newDnaFileName}" }
     if ($null -ne $oldUninstalledDnaFile)
     {
+        Write-Host "`tRenaming uninstalled -AddIn.dna file"
+
         # Write-Host "Found file" + "_UNINSTALLED_${dnaFileName}"
         $suffix = 1
         while ($null -ne ($project.ProjectItems | Where-Object { $_.Name -eq "_UNINSTALLED_${suffix}_${newDnaFileName}" }))
@@ -30,8 +34,9 @@ else
         $oldUninstalledDnaFile.Name = $newDnaFileName
             
      
-        if ($isFSharp)
+        if ($isFSharp -and $isBeforeVS2015)
         {
+            # For VS 2013 we need to set the enum value
             $oldUninstalledDnaFile.Properties.Item("BuildAction").Value = ([Microsoft.VisualStudio.FSharp.ProjectSystem.BuildAction]::Content)
         }
         else
@@ -51,7 +56,7 @@ else
         # Write-Host $newDnaFile.Name 
         # Write-Host $newDnaFileName
         $newDnaFile.Name = $newDnaFileName
-        if ($isFSharp)
+        if ($isFSharp -and $isBeforeVS2015)
         {
             $newDnaFile.Properties.Item("BuildAction").Value = ([Microsoft.VisualStudio.FSharp.ProjectSystem.BuildAction]::Content)
         }
@@ -70,12 +75,12 @@ else
 }
 
 Write-Host "`tAdding post-build commands"
-# We'd actually like to put $(ProjectDir)tools\Excel-DNA.0.30.0\tools\ExcelDna.xll
-$fullPath = $project.Properties.Item("FullPath").Value
-# Write-host $fullPath
+# We'd actually like to put $(SolutionDir)packages\Excel-DNA.0.30.0\tools\ExcelDna.xll
+$solutionPath = [System.IO.Path]::GetDirectoryName($project.DTE.Solution.FullName)
+# Write-host ("`tSolution Path: " + $solutionPath)
 # Write-host $toolsPath
-$escapedSearch = [regex]::Escape($project.Properties.Item("FullPath").Value)
-$toolMacro = $toolsPath -replace $escapedSearch, "`$(ProjectDir)"
+$escapedSearch = [regex]::Escape($solutionPath)
+$toolMacro = $toolsPath -replace $escapedSearch, "`$(SolutionDir)"
 $postBuild = "xcopy `"${toolMacro}\ExcelDna.xll`" `"`$(TargetDir)${projName}-AddIn.xll*`" /C /Y"
 $postBuild += "`r`n" + "xcopy `"`$(TargetDir)${projName}-AddIn.dna*`" `"`$(TargetDir)${projName}-AddIn64.dna*`" /C /Y"
 $postBuild += "`r`n" + "xcopy `"${toolMacro}\ExcelDna64.xll`" `"`$(TargetDir)${projName}-AddIn64.xll*`" /C /Y"
@@ -83,19 +88,26 @@ $postBuild += "`r`n" + "`"${toolMacro}\ExcelDnaPack.exe`" `"`$(TargetDir)${projN
 $postBuild += "`r`n" + "`"${toolMacro}\ExcelDnaPack.exe`" `"`$(TargetDir)${projName}-AddIn64.dna`" /Y"
 $prop = $project.Properties.Item("PostBuildEvent")
 if ($prop.Value -eq "") {
-	$prop.Value = $postBuild
+    $prop.Value = $postBuild
 } 
 else 
 {
-	$prop.Value += "`r`n$postBuild"
+    $prop.Value += "`r`n$postBuild"
 }
 
+# Write-Host "`tDone adding post-build commands"
 
-# I don't know how to do this for F# projects.
-if (!$isFSharp)
+if ($isFSharp -and $isBeforeVS2015)
 {
+    # I don't know how to do this for F# projects on old VS
+    Write-Host "`t*** Unable to configure Debug startup setting.`r`n`t    Please configure manually to start Excel when debugging.`r`n`t    See readme.txt for details."
+}
+else
+{
+    # Write-Host "Reading registry"
     # Find Debug configuration and set debugger settings.
     $exeValue = Get-ItemProperty -Path Registry::HKEY_CLASSES_ROOT\Excel.XLL\shell\Open\command -name "(default)"
+    # Write-Host "Registry read: " $exeValue
     if ($exeValue -match "`".*`"")
     {
         $exePath = $matches[0] -replace "`"", ""
@@ -112,8 +124,7 @@ if (!$isFSharp)
                 $debugProject.Properties.Item("StartAction").Value = 1
                 $debugProject.Properties.Item("StartProgram").Value = $exePath
                 
-                $outPath = Join-Path -path $project.Properties.Item("FullPath").Value -childPath $debugProject.Properties.Item("OutputPath").Value
-                $outPath = Join-Path -path $outPath -childPath ${projName}-AddIn.xll
+                $outPath = (${projName} + "-AddIn.xll")
                 $debugProject.Properties.Item("StartArguments").Value = "`"$outPath`""
             }
         }
